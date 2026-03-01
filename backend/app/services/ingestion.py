@@ -1,10 +1,15 @@
 import os
+import json
+import uuid
 import faiss
 import numpy as np
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 
-# Load embedding model once
+# =========================
+# LOAD EMBEDDING MODEL
+# =========================
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 VECTOR_DIR = "vector_store"
@@ -14,29 +19,37 @@ os.makedirs(VECTOR_DIR, exist_ok=True)
 # =========================
 # PROCESS DOCUMENT
 # =========================
+
 async def process_document(file, user_id: int):
 
-    # Save file
-    file_path = f"{VECTOR_DIR}/{user_id}_{file.filename}"
+    # Create unique document ID
+    document_id = str(uuid.uuid4())
+
+    # Create user directory
+    user_dir = f"{VECTOR_DIR}/{user_id}"
+    os.makedirs(user_dir, exist_ok=True)
+
+    # Save uploaded file
+    file_path = f"{user_dir}/{document_id}_{file.filename}"
 
     with open(file_path, "wb") as f:
         content = await file.read()
         f.write(content)
 
-    # Extract text
+    # Extract text from PDF
     reader = PdfReader(file_path)
 
     text = ""
     for page in reader.pages:
         extracted = page.extract_text()
         if extracted:
-            text += extracted
+            text += extracted + "\n"
 
     # Validate text
     if not text.strip():
         raise ValueError("PDF contains no readable text")
 
-    # Chunk text
+    # Chunk text (line-based for structural precision)
     chunks = chunk_text(text)
 
     if not chunks:
@@ -45,31 +58,35 @@ async def process_document(file, user_id: int):
     # Create embeddings
     embeddings = model.encode(chunks)
 
-    # Store embeddings + chunks
-    store_embeddings(user_id, embeddings, chunks)
+    # Store embeddings and metadata
+    store_embeddings(user_dir, document_id, embeddings, chunks)
 
-    return {"message": "Document processed successfully"}
+    return {
+        "message": "Document processed successfully",
+        "document_id": document_id,
+        "filename": file.filename
+    }
 
 
 # =========================
-# CHUNK TEXT
+# CHUNK TEXT (Line-Based)
 # =========================
-def chunk_text(text, chunk_size=500):
-    chunks = []
 
-    for i in range(0, len(text), chunk_size):
-        chunks.append(text[i:i + chunk_size])
+def chunk_text(text):
 
-    return chunks
+    raw_lines = text.split("\n")
+
+    # Remove empty lines
+    lines = [line.strip() for line in raw_lines if line.strip()]
+
+    return lines
 
 
 # =========================
 # STORE EMBEDDINGS
 # =========================
-import json
 
-
-def store_embeddings(user_id, embeddings, chunks):
+def store_embeddings(user_dir, document_id, embeddings, chunks):
 
     dimension = embeddings.shape[1]
     index = faiss.IndexFlatL2(dimension)
@@ -77,33 +94,38 @@ def store_embeddings(user_id, embeddings, chunks):
     index.add(np.array(embeddings))
 
     # Save FAISS index
-    faiss.write_index(index, f"{VECTOR_DIR}/{user_id}.index")
+    faiss.write_index(index, f"{user_dir}/{document_id}.index")
 
-    # Save chunks (numpy version for FAISS search)
-    np.save(f"{VECTOR_DIR}/{user_id}_chunks.npy", np.array(chunks))
+    # Save raw chunks for search
+    np.save(f"{user_dir}/{document_id}_chunks.npy", np.array(chunks))
 
-    # 🔥 NEW: Save structured metadata JSON
+    # Save structured metadata
     structured_chunks = []
 
     for i, chunk in enumerate(chunks):
         structured_chunks.append({
-            "chunk_id": i,
             "text": chunk,
             "is_first": i == 0,
             "is_last": i == len(chunks) - 1
         })
 
-    with open(f"{VECTOR_DIR}/{user_id}_chunks.json", "w") as f:
-        json.dump(structured_chunks, f, indent=2)
+    with open(f"{user_dir}/{document_id}_chunks.json", "w") as f:
+        json.dump(structured_chunks, f)
 
 
 # =========================
 # SEARCH SIMILAR CHUNKS
 # =========================
-def search_similar_chunks(user_id: int, query: str, top_k: int = 3):
 
-    index_path = f"vector_store/{user_id}.index"
-    chunks_path = f"vector_store/{user_id}_chunks.npy"
+def search_similar_chunks(user_id: int, document_id: str, query: str, top_k: int = 3):
+
+    user_dir = f"{VECTOR_DIR}/{user_id}"
+
+    index_path = f"{user_dir}/{document_id}.index"
+    chunks_path = f"{user_dir}/{document_id}_chunks.npy"
+
+    if not os.path.exists(index_path) or not os.path.exists(chunks_path):
+        return []
 
     index = faiss.read_index(index_path)
     chunks = np.load(chunks_path, allow_pickle=True)

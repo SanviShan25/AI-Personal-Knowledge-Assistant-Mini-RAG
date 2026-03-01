@@ -1,14 +1,24 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-from app.core.security import get_current_user
-from app.services.ingestion import search_similar_chunks
-from openai import OpenAI
 import os
 import json
+from typing import List, Dict
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from openai import OpenAI
+
+from app.core.security import get_current_user
+from app.services.ingestion import search_similar_chunks
 
 router = APIRouter()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+VECTOR_DIR = "vector_store"
+
+
+# =========================
+# SYSTEM PROMPT
+# =========================
 
 SYSTEM_PROMPT = """
 You are a strict document question-answering assistant.
@@ -21,10 +31,20 @@ Rules:
 4. Keep answers concise and factual.
 """
 
+
+# =========================
+# REQUEST MODEL
+# =========================
+
 class QueryRequest(BaseModel):
     question: str
-    chat_history: list = []
+    document_id: str
+    chat_history: List[Dict[str, str]] = Field(default_factory=list)
 
+
+# =========================
+# QUERY DOCUMENT
+# =========================
 
 @router.post("/query")
 async def query_document(
@@ -32,31 +52,27 @@ async def query_document(
     current_user=Depends(get_current_user),
 ):
 
-    # ==============================
-    # 🔥 1️⃣ STRUCTURAL DETECTION
-    # ==============================
-
+    user_id = current_user.id
     question_lower = request.question.lower()
 
-    chunks_path = f"vector_store/{current_user.id}_chunks.json"
+    user_dir = f"{VECTOR_DIR}/{user_id}"
+    chunks_json_path = f"{user_dir}/{request.document_id}_chunks.json"
 
-    if os.path.exists(chunks_path):
-        with open(chunks_path, "r") as f:
-            chunks = json.load(f)
+    # ==============================
+    # 1️⃣ STRUCTURAL DETECTION
+    # ==============================
 
-        # Handle last line / last paragraph
-        if "last line" in question_lower or "last paragraph" in question_lower:
-            last_chunk = next((c for c in chunks if c.get("is_last")), None)
-            if last_chunk:
-                return {
-                    "question": request.question,
-                    "answer": last_chunk["text"],
-                    "sources": [last_chunk["text"]]
-                }
+    if os.path.exists(chunks_json_path):
 
-        # Handle first line / first paragraph
-        if "first line" in question_lower or "first paragraph" in question_lower:
-            first_chunk = next((c for c in chunks if c.get("is_first")), None)
+        with open(chunks_json_path, "r") as f:
+            structured_chunks = json.load(f)
+
+        # First line
+        if "first line" in question_lower:
+            first_chunk = next(
+                (c for c in structured_chunks if c.get("is_first")),
+                None
+            )
             if first_chunk:
                 return {
                     "question": request.question,
@@ -64,11 +80,28 @@ async def query_document(
                     "sources": [first_chunk["text"]]
                 }
 
+        # Last line
+        if "last line" in question_lower:
+            last_chunk = next(
+                (c for c in structured_chunks if c.get("is_last")),
+                None
+            )
+            if last_chunk:
+                return {
+                    "question": request.question,
+                    "answer": last_chunk["text"],
+                    "sources": [last_chunk["text"]]
+                }
+
     # ==============================
-    # 🔥 2️⃣ NORMAL VECTOR SEARCH
+    # 2️⃣ VECTOR SEARCH
     # ==============================
 
-    results = search_similar_chunks(current_user.id, request.question)
+    results = search_similar_chunks(
+        user_id,
+        request.document_id,
+        request.question
+    )
 
     if not results:
         return {
@@ -81,7 +114,7 @@ async def query_document(
     context = "\n\n".join(top_chunks)
 
     # ==============================
-    # 🔥 3️⃣ BUILD CHAT HISTORY
+    # 3️⃣ BUILD CHAT HISTORY
     # ==============================
 
     messages = [
@@ -106,16 +139,20 @@ Question:
     })
 
     # ==============================
-    # 🔥 4️⃣ CALL OPENAI
+    # 4️⃣ CALL OPENAI
     # ==============================
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        temperature=0.1,
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.1,
+        )
 
-    answer = response.choices[0].message.content.strip()
+        answer = response.choices[0].message.content.strip()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     return {
         "question": request.question,

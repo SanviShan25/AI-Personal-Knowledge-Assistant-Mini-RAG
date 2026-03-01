@@ -1,12 +1,12 @@
 import streamlit as st
 import requests
 
-BACKEND_URL = "http://127.0.0.1:8000"
+API_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(page_title="AI Knowledge Assistant", layout="wide")
 
 st.title("📚 AI Knowledge Assistant")
-st.markdown("Upload a document and chat with it.")
+st.markdown("Upload one or more documents and chat with them.")
 
 # ---------------- SESSION STATE ----------------
 
@@ -25,7 +25,7 @@ password = st.sidebar.text_input("Password", type="password")
 
 if st.sidebar.button("Login"):
     response = requests.post(
-        f"{BACKEND_URL}/login",
+        f"{API_URL}/login",
         data={"username": email, "password": password},
     )
 
@@ -35,42 +35,57 @@ if st.sidebar.button("Login"):
     else:
         st.sidebar.error("Login failed")
 
-# ---------------- UPLOAD ----------------
+# ---------------- UPLOAD SECTION ----------------
 
-st.header("📤 Upload Document")
+st.header("📤 Upload Document(s)")
 
-uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+uploaded_files = st.file_uploader(
+    "Upload PDF(s)",
+    type=["pdf"],
+    accept_multiple_files=True
+)
 
-if uploaded_file and st.session_state.token:
-    headers = {
-        "Authorization": f"Bearer {st.session_state.token}"
-    }
+if uploaded_files:
 
-    response = requests.post(
-        f"{BACKEND_URL}/upload",
-        files={"file": uploaded_file},
-        headers=headers
-    )
-
-    if response.status_code == 200:
-        st.success("Document processed successfully!")
+    if not st.session_state.token:
+        st.error("Please login first.")
     else:
-        st.error("Upload failed")
+        for uploaded_file in uploaded_files:
+
+            files = {
+                "file": (
+                    uploaded_file.name,
+                    uploaded_file.getvalue(),
+                    "application/pdf"
+                )
+            }
+
+            response = requests.post(
+                f"{API_URL}/upload",
+                headers={
+                    "Authorization": f"Bearer {st.session_state.token}"
+                },
+                files=files
+            )
+
+            if response.status_code == 200:
+                st.success(f"{uploaded_file.name} uploaded successfully!")
+            else:
+                st.error(f"Upload failed for {uploaded_file.name}")
 
 # ---------------- CHAT SECTION ----------------
 
-st.header("💬 Chat with Your Document")
+st.header("💬 Chat with Your Documents")
 
 if not st.session_state.token:
     st.warning("Please login first.")
 else:
 
-    # Display previous messages
+    # Show previous messages
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Chat input
     user_input = st.chat_input("Ask something about your document...")
 
     if user_input:
@@ -83,17 +98,16 @@ else:
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Call backend
         headers = {
             "Authorization": f"Bearer {st.session_state.token}"
         }
 
         response = requests.post(
-            f"{BACKEND_URL}/query",
+            f"{API_URL}/query",
             json={
                 "question": user_input,
                 "chat_history": st.session_state.chat_history
-        },
+            },
             headers=headers
         )
 
@@ -101,7 +115,6 @@ else:
             data = response.json()
             answer = data["answer"]
 
-            # Append assistant answer
             st.session_state.chat_history.append(
                 {"role": "assistant", "content": answer}
             )
@@ -109,14 +122,9 @@ else:
             with st.chat_message("assistant"):
                 st.markdown(answer)
 
-                # Expandable sources
                 with st.expander("Sources"):
                     for src in data["sources"]:
                         st.write(src)
 
         else:
             st.error("Query failed")
-
-
-
-
