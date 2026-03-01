@@ -152,5 +152,5 @@ For issues, questions, or suggestions, please open an issue on GitHub.
 
 ---
 
-**Author:** Sanvi Shan  
+**Made by:** Sanvi and Harshit  
 **Repository:** https://github.com/SanviShan25/AI-Personal-Knowledge-Assistant-Mini-RAG
