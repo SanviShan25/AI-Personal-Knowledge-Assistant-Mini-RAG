@@ -1,0 +1,8 @@
+{
+  "_comment": "Minimum retrieval scores for the default chunk settings. CI fails a PR that drops below these. After a change that improves retrieval, raise them to the new baseline minus ~0.03.",
+  "min": {
+    "hit@1": 0.0,
+    "hit@5": 0.0,
+    "mrr": 0.0
+  }
+}

@@ -1,0 +1,48 @@
+{"question": "What is the difference between a program and a process?", "pages": [1], "evidence": "a process is a program in execution"}
+{"question": "Which data structure does the OS keep to store a process's state and registers?", "pages": [1], "evidence": "process control block for every process"}
+{"question": "When does a process go into the waiting state?", "pages": [1], "evidence": "requests input or output moves to the waiting state"}
+{"question": "Why are context switches considered overhead?", "pages": [1], "evidence": "no useful work is done while switching"}
+{"question": "What do threads of the same process share, and what do they keep separately?", "pages": [1], "evidence": "each has its own stack and registers"}
+{"question": "What is the definition of response time in scheduling?", "pages": [2], "evidence": "until the first response is produced"}
+{"question": "What is the convoy effect?", "pages": [2], "evidence": "many short processes wait behind one long CPU-bound process"}
+{"question": "Which scheduling algorithm gives the minimum average waiting time?", "pages": [2], "evidence": "provably optimal for minimising the average waiting time"}
+{"question": "How is the next CPU burst length predicted?", "pages": [2], "evidence": "exponential average of previous bursts"}
+{"question": "What is the preemptive form of SJF called?", "pages": [2], "evidence": "Shortest-Remaining-Time-First"}
+{"question": "How is turnaround time different from waiting time?", "pages": [2], "evidence": "total time from submission of a process to its completion"}
+{"question": "How long is a typical time quantum in round robin?", "pages": [3], "evidence": "typically 10 to 100 milliseconds"}
+{"question": "What happens to round robin if the time slice is too large?", "pages": [3], "evidence": "Round Robin behaves like First-Come, First-Served"}
+{"question": "What is starvation and how can it be solved in priority scheduling?", "pages": [3], "evidence": "gradually increasing the priority of processes that have waited"}
+{"question": "How does a multilevel feedback queue treat a CPU-hungry process?", "pages": [3], "evidence": "moved to a lower-priority queue"}
+{"question": "What is a multilevel queue?", "pages": [3], "evidence": "splits the ready queue into separate queues"}
+{"question": "What is a race condition?", "pages": [4], "evidence": "final result depends on the exact order in which they run"}
+{"question": "What three requirements must a critical-section solution meet?", "pages": [4], "evidence": "mutual exclusion, progress and bounded waiting"}
+{"question": "What does Peterson's algorithm need to work on modern CPUs?", "pages": [4], "evidence": "needs memory barriers to work correctly"}
+{"question": "Why would someone use a spinlock even though it wastes CPU?", "pages": [4], "evidence": "avoids a context switch when locks are held only briefly"}
+{"question": "What are the two operations on a semaphore?", "pages": [4], "evidence": "two atomic operations, wait and signal"}
+{"question": "Name some classic synchronization problems.", "pages": [4], "evidence": "dining-philosophers problem"}
+{"question": "What are the four necessary conditions for deadlock?", "pages": [5], "evidence": "mutual exclusion, hold and wait, no preemption and circular wait"}
+{"question": "How can ordering resources prevent deadlock?", "pages": [5], "evidence": "request resources in increasing order"}
+{"question": "What does the Banker's algorithm check before granting a request?", "pages": [5], "evidence": "would leave the system in a safe state"}
+{"question": "How are deadlocks detected?", "pages": [5], "evidence": "searches a wait-for graph for cycles"}
+{"question": "What do most general-purpose operating systems do about deadlocks?", "pages": [5], "evidence": "simply ignore deadlocks"}
+{"question": "Which placement strategy is usually fastest for contiguous allocation?", "pages": [6], "evidence": "first fit is usually the fastest"}
+{"question": "Explain internal fragmentation.", "pages": [6], "evidence": "unused memory inside an allocated block"}
+{"question": "How does paging get rid of external fragmentation?", "pages": [6], "evidence": "fixed-size frames and logical memory into pages of the same size"}
+{"question": "How is a logical address translated into a physical address with paging?", "pages": [6], "evidence": "split into a page number and a page offset"}
+{"question": "What is the TLB used for?", "pages": [6], "evidence": "translation look-aside buffer"}
+{"question": "What is demand paging?", "pages": [7], "evidence": "a page is loaded only when it is first accessed"}
+{"question": "What does the OS do when a page fault occurs?", "pages": [7], "evidence": "restarts the instruction that caused the fault"}
+{"question": "What is Belady's anomaly?", "pages": [7], "evidence": "giving a process more frames can increase the number of page faults"}
+{"question": "Why can't the optimal page replacement algorithm be used in real systems?", "pages": [7], "evidence": "cannot be implemented in practice"}
+{"question": "What is the second-chance algorithm?", "pages": [7], "evidence": "cheaper approximation of LRU that uses a reference bit"}
+{"question": "What causes thrashing and how is it prevented?", "pages": [7], "evidence": "spends more time paging than executing"}
+{"question": "Does an inode store the file name?", "pages": [8], "evidence": "stores its metadata and pointers to its data blocks, but not its name"}
+{"question": "How can one file have multiple hard links?", "pages": [8], "evidence": "Directory entries map names to inode numbers"}
+{"question": "What is the drawback of linked allocation?", "pages": [8], "evidence": "makes direct access slow"}
+{"question": "How do inodes support very large files?", "pages": [8], "evidence": "single, double and triple indirect blocks"}
+{"question": "Why does journaling make crash recovery faster?", "pages": [8], "evidence": "instead of scanning the whole disk"}
+{"question": "What is the difference between polling and interrupts?", "pages": [9], "evidence": "repeatedly checks a device's status register"}
+{"question": "How does DMA reduce CPU load?", "pages": [9], "evidence": "interrupted only once, when the transfer is complete"}
+{"question": "What are seek time and rotational latency?", "pages": [9], "evidence": "the time to move the arm to the right track"}
+{"question": "Which disk scheduling algorithm is also called the elevator algorithm?", "pages": [9], "evidence": "The SCAN or elevator algorithm"}
+{"question": "Why don't SSDs have seek time, and what is wear levelling?", "pages": [9], "evidence": "spread writes evenly"}

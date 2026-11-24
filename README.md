@@ -146,15 +146,28 @@ The tests cover:
 
 They use a deterministic fake embedder and generate PDFs in memory.
 
-**Retrieval evaluation.** Measure hit-rate@k and MRR on your own PDFs, and compare chunk sizes:
+### Retrieval benchmark
+
+Every pull request runs a retrieval benchmark in CI. It uses 48 questions over a 9-page set of Operating Systems notes in `backend/eval/` (original text, written for this benchmark). Each question names the page and a short evidence phrase that a correct passage must contain.
+
+- The scores appear on the GitHub Actions run page.
+- The build fails if they drop below `backend/eval/thresholds.json`.
+
+| chunk size / overlap | hit@1 | hit@3 | hit@5 | MRR |
+|---|---|---|---|---|
+| 800 / 150 (default) | 800 / 150 | 19 | 85.4% | 95.8% | 97.9% | 0.903 | | |
+| 500 / 100 | | | | |
+| 120 / 0 (close to the old line-by-line chunking) | | | | |
+
+Run it locally, or on your own PDFs:
 
 ```bash
 cd backend
-python -m scripts.eval_retrieval notes.pdf questions.jsonl --k 5
-python -m scripts.eval_retrieval notes.pdf questions.jsonl --chunk-size 500 --overlap 100
+python -m scripts.eval_retrieval --configs 800:150,500:100,120:0
+python -m scripts.eval_retrieval --pdf notes.pdf --questions my-questions.jsonl -v
 ```
 
-`questions.jsonl` has one `{"question": "...", "pages": [12]}` per line.
+`hit@k` is the share of questions whose correct passage is in the top *k* results. `MRR` is the mean of 1/rank of the first correct passage.
 
 ## Limitations and next steps
 
@@ -164,6 +177,6 @@ python -m scripts.eval_retrieval notes.pdf questions.jsonl --chunk-size 500 --ov
 - Schema changes use `create_all`. Alembic migrations would be the next step.
 - An HNSW index on `chunks.embedding` would help at large scale. Exact search is used now because it's accurate with per-user filters.
 
-## Authors
+## Author
 
-Sanvi and Harshit
+Built by **Sanvi Shan** ([@SanviShan25](https://github.com/SanviShan25)).

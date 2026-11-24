@@ -1,11 +1,9 @@
 """Upload -> (background) pages -> chunks -> embeddings -> chunks table."""
 
-import io
 import logging
 import uuid
 from pathlib import PurePath
 
-from pypdf import PdfReader
 from sqlalchemy import delete, insert, update
 from sqlalchemy.orm import Session
 
@@ -14,32 +12,16 @@ from app.db.database import SessionLocal
 from app.models.document import Chunk, Document, DocumentFile
 from app.services import embeddings
 from app.services.chunking import chunk_pages
+from app.services.pdf import IngestionError, extract_pages
 from app.services.retrieval import to_db_vector
 
 log = logging.getLogger(__name__)
-
-
-class IngestionError(Exception):
-    """A user-facing problem with the uploaded file."""
 
 
 def display_name(filename: str | None) -> str:
     # Only used for display; nothing is ever written to disk under the client's filename.
     name = PurePath((filename or "").replace("\\", "/")).name.strip()
     return name[:255] or "document.pdf"
-
-
-def extract_pages(data: bytes) -> list[str]:
-    try:
-        reader = PdfReader(io.BytesIO(data))
-        if reader.is_encrypted and not reader.decrypt(""):
-            raise IngestionError("Password-protected PDFs are not supported.")
-        return [page.extract_text() or "" for page in reader.pages]
-    except IngestionError:
-        raise
-    except Exception as exc:  # pypdf raises many different error types on broken files
-        log.info("Could not parse PDF: %s", exc)
-        raise IngestionError("Could not read this PDF. It may be corrupted.") from exc
 
 
 def create_document(db: Session, user_id: int, filename: str | None, data: bytes) -> Document:
