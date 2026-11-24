@@ -179,4 +179,4 @@ python -m scripts.eval_retrieval --pdf notes.pdf --questions my-questions.jsonl 
 
 ## Author
 
-Built by **Sanvi Shan** ([@SanviShan25](https://github.com/SanviShan25)).
+Built by **Sanvi Shan and Harshit Mishra**
